@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Jacob</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080808;
+    --white: #ffffff;
+    --dim: #888888;
+    --low: #555555;
+    --border: #1e1e1e;
+    --green: #7fc97f;
+    --gold: #c8a96e;
+    --red: #e07070;
+    --card: #0f0f0f;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: .2em;
+    color: var(--white);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .headline {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    line-height: 1.15;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .sub {
+    font-size: 13px;
+    color: var(--white);
+    line-height: 1.5;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    margin-bottom: 16px;
+  }
+
+  /* Sliders */
+  .slider-block {
+    margin-bottom: 24px;
+  }
+
+  .slider-block:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .slider-label {
+    font-size: 13px;
+    color: var(--white);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  input[type=range] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--white);
+    cursor: pointer;
+  }
+
+  .slider-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 56px;
+    text-align: right;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  /* Resultado principal */
+  .result-main {
+    text-align: center;
+    padding: 8px 0 24px;
+  }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--white);
+    margin-bottom: 10px;
+  }
+
+  .result-num {
+    font-size: 72px;
+    font-weight: 500;
+    color: var(--green);
+    line-height: 1;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .result-unit {
+    font-size: 15px;
+    color: var(--white);
+    margin-top: 6px;
+  }
+
+  /* Comparación */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .compare-col {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .compare-head {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .compare-head.now { color: var(--red); }
+  .compare-head.after { color: var(--green); }
+
+  .compare-item {
+    margin-bottom: 10px;
+  }
+
+  .compare-item:last-child { margin-bottom: 0; }
+
+  .compare-item-label {
+    font-size: 10px;
+    color: var(--white);
+    margin-bottom: 2px;
+  }
+
+  .compare-item-val {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .compare-item-val.bad { color: var(--red); }
+  .compare-item-val.good { color: var(--green); }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--white);
+    line-height: 1.4;
+  }
+
+  /* CTA */
+  .cta {
+    display: block;
+    width: 100%;
+    background: var(--white);
+    color: var(--bg);
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    margin-top: 20px;
+    transition: opacity .15s;
+  }
+
+  .cta:hover { opacity: .85; }
+
+  .cta-sub {
+    font-size: 11px;
+    color: var(--white);
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* Desglose */
+  .breakdown {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .breakdown-head {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+
+  .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .breakdown-item:last-child { border-bottom: none; }
+
+  .breakdown-desc { color: var(--white); line-height: 1.4; }
+  .breakdown-hrs {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--green);
+    white-space: nowrap;
+    margin-left: 12px;
+  }
+
+  /* ===== Email gate ===== */
+  .locked {
+    filter: blur(7px);
+    pointer-events: none;
+    user-select: none;
+    transition: filter .4s;
+  }
+
+  .unlocked {
+    filter: none;
+    pointer-events: auto;
+    user-select: auto;
+  }
+
+  .gate {
+    background: var(--card);
+    border: 1px solid var(--green);
+    border-radius: 12px;
+    padding: 22px 18px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .gate.hidden { display: none; }
+
+  .gate-title {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .gate-hours {
+    color: var(--green);
+  }
+
+  .gate-sub {
+    font-size: 13px;
+    color: var(--white);
+    opacity: .75;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .gate-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px 14px;
+    color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+    outline: none;
+  }
+
+  .gate-input:focus { border-color: var(--white); }
+
+  .gate-btn {
+    width: 100%;
+    background: var(--white);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .gate-btn:hover { opacity: .85; }
+
+  /* ===== Live cost counter ===== */
+  .live-cost {
+    text-align: center;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: var(--white);
+    opacity: .8;
+  }
+
+  .live-cost b {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--red);
+    font-size: 14px;
+  }
+
+  /* ===== WhatsApp button ===== */
+  .wa-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    margin-top: 10px;
+    transition: opacity .15s;
+  }
+
+  .wa-btn:hover { opacity: .85; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1 class="headline">¿Cuánto te cuesta no tener un sistema?</h1>
+    <p class="sub">Mueve los tres sliders. El número es tuyo.</p>
+  </div>
+
+  <div class="card">
+    <div class="slider-block">
+      <div class="slider-label">¿Cuánto factura tu negocio al año?</div>
+      <div class="slider-row">
+        <input type="range" id="revenue" min="12000" max="500000" step="1000" value="100000" oninput="calc()">
+        <span class="slider-val" id="rev-label">$100K</span>
+      </div>
+    </div>
+
+    <div class="slider-block">
+      <div class="slider-label">¿Cuántas horas trabajas por semana?</div>
+      <div class="slider-row">
+        <input type="range" id="hours" min="20" max="90" step="1" value="55" oninput="calc()">
+        <span class="slider-val" id="hrs-label">55 h</span>
+      </div>
+    </div>
+
+    <div class="slider-block">
+      <div class="slider-label">¿Cuánto de tu semana lo pasas resolviendo cosas que tu equipo debería resolver?</div>
+      <div class="slider-row">
+        <input type="range" id="ops" min="10" max="95" step="5" value="70" oninput="calc()">
+        <span class="slider-val" id="ops-label">70%</span>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- GATE: se muestra hasta que deja el email -->
+    <div class="gate" id="gate">
+      <div class="gate-title">Recuperas <span class="gate-hours" id="gate-hours">—</span> horas por semana</div>
+      <div class="gate-sub">Deja tu correo para ver cuánto dinero significa, de dónde salen esas horas y cómo se recuperan.</div>
+      <input type="email" class="gate-input" id="gate-email" placeholder="tu@correo.com">
+      <button class="gate-btn" onclick="unlock()">Ver mi resultado completo →</button>
+    </div>
+
+    <div class="locked" id="results">
+
+    <div class="result-main">
+      <div class="result-label">Con Jacob recuperas</div>
+      <div class="result-num" id="s-hours">—</div>
+      <div class="result-unit">horas por semana</div>
+    </div>
+
+    <div class="live-cost">
+      Desde que abriste esta página, no tener un sistema te costó <b id="live-cost">$0</b>
+    </div>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head now">Hoy</div>
+        <div class="compare-item">
+          <div class="compare-item-label">Trabajas</div>
+          <div class="compare-item-val bad" id="m-hrs-now">—</div>
+        </div>
+        <div class="compare-item">
+          <div class="compare-item-label">Tu hora vale</div>
+          <div class="compare-item-val" id="m-rate-now">—</div>
+        </div>
+        <div class="compare-item">
+          <div class="compare-item-label">Costo al año</div>
+          <div class="compare-item-val bad" id="m-cost-now">—</div>
+        </div>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head after">Con Jacob</div>
+        <div class="compare-item">
+          <div class="compare-item-label">Trabajas</div>
+          <div class="compare-item-val good" id="m-hrs-after">—</div>
+        </div>
+        <div class="compare-item">
+          <div class="compare-item-label">Tu hora vale</div>
+          <div class="compare-item-val good" id="m-rate-after">—</div>
+        </div>
+        <div class="compare-item">
+          <div class="compare-item-label">Recuperas</div>
+          <div class="compare-item-val good" id="s-value">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-head">De dónde vienen esas horas</div>
+      <div class="breakdown-item">
+        <span class="breakdown-desc">Dejas de responder interrupciones y de repetir lo mismo</span>
+        <span class="breakdown-hrs" id="b-m1">—</span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-desc">Eliminas reuniones inútiles</span>
+        <span class="breakdown-hrs" id="b-m2">—</span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-desc">Sales del seguimiento uno a uno</span>
+        <span class="breakdown-hrs" id="b-m3">—</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="s-value-2">—</div>
+        <div class="stat-label">valor recuperado al año</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="s-vac">—</div>
+        <div class="stat-label">semanas que puedes desconectarte</div>
+      </div>
+    </div>
+
+    <a href="https://calendly.com/jacobmanagment2026/30min" target="_blank" class="cta">
+      Ver cómo se recuperan estas horas →
+    </a>
+    <a href="#" id="wa-link" target="_blank" class="wa-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Prefiero escribir por WhatsApp
+    </a>
+    <p class="cta-sub">Diagnóstico gratuito · 30 minutos · Sin compromiso</p>
+
+    </div><!-- /locked results -->
+  </div>
+
+</div>
+
+<script>
+const weeks = 50;
+
+function fmtUSD(n) {
+  if (n >= 1000000) return '$' + (Math.round(n / 100000) / 10) + 'M';
+  if (n >= 1000) return '$' + Math.round(n / 1000) + 'K';
+  return '$' + Math.round(n);
+}
+
+function calc() {
+  const rev = +document.getElementById('revenue').value;
+  const hrs = +document.getElementById('hours').value;
+  const ops = +document.getElementById('ops').value / 100;
+
+  document.getElementById('rev-label').textContent = fmtUSD(rev);
+  document.getElementById('hrs-label').textContent = hrs + ' h';
+  document.getElementById('ops-label').textContent = Math.round(ops * 100) + '%';
+
+  const rate = rev / (hrs * weeks);
+  const opsHrs = Math.round(hrs * ops);
+
+  // M1 — Matriz de Autonomía (fusiona autoridad + procesos)
+  const rm1_autoridad = Math.round(Math.max(0, Math.round(opsHrs * 2.5) - 5) * 12 / 60 * 5);
+  const rm1_procesos = Math.round(Math.max(0, Math.round(opsHrs * 0.8) - 3) * 20 / 60);
+  const rm1 = rm1_autoridad + rm1_procesos;
+
+  // M2 — Centro de mando
+  const rm2 = Math.max(0, Math.round(Math.round(opsHrs * 0.25) - 4));
+
+  // M3 — Panel de control
+  const rm3 = Math.max(0, Math.round(Math.round(opsHrs * 0.15) - 1));
+
+  const recovered = Math.round((rm1 + rm2 + rm3) * 0.7);
+  const totalAfter = Math.max(10, hrs - recovered);
+  const rateAfter = rev / (totalAfter * weeks);
+  const valueRecovered = recovered * weeks * rate;
+
+  document.getElementById('s-hours').textContent = recovered;
+  document.getElementById('m-hrs-now').textContent = hrs + ' h / sem';
+  document.getElementById('m-rate-now').textContent = fmtUSD(rate) + ' / h';
+  document.getElementById('m-cost-now').textContent = fmtUSD(valueRecovered) + ' / año';
+  document.getElementById('m-hrs-after').textContent = totalAfter + ' h / sem';
+  document.getElementById('m-rate-after').textContent = fmtUSD(rateAfter) + ' / h';
+  document.getElementById('s-value').textContent = fmtUSD(valueRecovered);
+  document.getElementById('s-value-2').textContent = fmtUSD(valueRecovered);
+  document.getElementById('s-vac').textContent = Math.max(2, Math.round(recovered / 5)) + ' sem.';
+
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = '+' + v + 'h / sem'; };
+  set('b-m1', rm1);
+  set('b-m2', rm2);
+  set('b-m3', rm3);
+
+  // Update gate teaser
+  const gh = document.getElementById('gate-hours');
+  if (gh) gh.textContent = '+' + recovered;
+
+  // Store values for live counter + whatsapp
+  window._jacobData = { valueRecovered, recovered };
+
+  // Update WhatsApp link with personalized message
+  const wa = document.getElementById('wa-link');
+  if (wa) {
+    // REEMPLAZA 56912345678 CON TU NUMERO (codigo pais + numero, sin +)
+    const phone = '56912345678';
+    const msg = encodeURIComponent('Hola, hice la calculadora de Jacob y me salió que pierdo ' + fmtUSD(valueRecovered) + ' al año por no tener un sistema. Quiero saber más.');
+    wa.href = 'https://wa.me/' + phone + '?text=' + msg;
+  }
+}
+
+// ===== Email gate =====
+function unlock() {
+  const email = document.getElementById('gate-email').value.trim();
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    document.getElementById('gate-email').style.borderColor = 'var(--red)';
+    return;
+  }
+
+  // Envia el lead a Notion via API
+  try {
+    const d = window._jacobData || {};
+    fetch('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email,
+        recovered: d.recovered,
+        valueRecovered: d.valueRecovered,
+        revenue: document.getElementById('revenue').value,
+        hours: document.getElementById('hours').value,
+        ops: document.getElementById('ops').value
+      })
+    }).catch(() => {});
+  } catch(e) {}
+
+  document.getElementById('gate').classList.add('hidden');
+  const r = document.getElementById('results');
+  r.classList.remove('locked');
+  r.classList.add('unlocked');
+
+  startLiveCounter();
+}
+
+// ===== Live cost counter =====
+let _counterStarted = false;
+function startLiveCounter() {
+  if (_counterStarted) return;
+  _counterStarted = true;
+  const start = Date.now();
+  setInterval(() => {
+    const d = window._jacobData;
+    if (!d) return;
+    // Costo por segundo = valor anual / segundos laborales del año (50 sem * 5 dias * 8 hrs * 3600)
+    const perSec = d.valueRecovered / (50 * 5 * 8 * 3600);
+    const elapsed = (Date.now() - start) / 1000;
+    const cost = perSec * elapsed;
+    const el = document.getElementById('live-cost');
+    if (el) el.textContent = '$' + cost.toFixed(2) + ' USD';
+  }, 100);
+}
+
+calc();
+</script>
+</body>
+</html>
