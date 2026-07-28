@@ -1,0 +1,12 @@
+{
+  "name": "jacob",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:local": "node scripts/dev-server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
