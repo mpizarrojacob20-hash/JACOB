@@ -1,21 +1,12 @@
 // api/whatsapp-webhook.js — Recibe mensajes entrantes de WhatsApp vía Twilio.
-// Valida la firma de Twilio, reusa la misma lógica que jacob-agent.js
-// (lib/jacob-core.js) y responde en formato TwiML.
+// Valida la firma de Twilio, responde de inmediato con un TwiML vacío (Claude puede
+// tardar 15-20s, más de lo que Twilio espera por una respuesta síncrona), y una vez
+// lista la respuesta la envía por separado vía la API de mensajes de Twilio.
 import crypto from "node:crypto";
 import { processMessage } from "../lib/jacob-core.js";
 
-function escapeXml(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function twiml(message) {
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`;
-}
+const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+const FALLBACK_MESSAGE = "Tuve un problema técnico procesando tu mensaje. Intenta de nuevo en unos minutos.";
 
 // Algoritmo de validación de Twilio: HMAC-SHA1(url + params ordenados y concatenados)
 // con el Auth Token como llave, comparado en base64.
@@ -34,15 +25,69 @@ function isValidTwilioSignature(authToken, url, params, signature) {
   return crypto.timingSafeEqual(expectedBuf, receivedBuf);
 }
 
+// WhatsApp/Twilio rechaza mensajes de más de 1600 caracteres (error 21617). Las
+// respuestas completas de Jacob (diagnóstico ESTADO 2 con las 4 secciones) suelen
+// superarlo, así que se parten en varios mensajes respetando párrafos.
+function splitForWhatsApp(text, maxLen = 1500) {
+  if (text.length <= maxLen) return [text];
+  const paragraphs = text.split(/\n\n+/);
+  const chunks = [];
+  let current = "";
+  for (const para of paragraphs) {
+    const candidate = current ? `${current}\n\n${para}` : para;
+    if (candidate.length > maxLen) {
+      if (current) chunks.push(current);
+      if (para.length > maxLen) {
+        for (let i = 0; i < para.length; i += maxLen) {
+          chunks.push(para.slice(i, i + maxLen));
+        }
+        current = "";
+      } else {
+        current = para;
+      }
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function sendWhatsAppMessage(accountSid, authToken, to, from, body) {
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const params = new URLSearchParams({ To: to, From: from, Body: body });
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Twilio send ${response.status}: ${errText}`);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).end();
     return;
   }
 
-  const { TWILIO_AUTH_TOKEN, ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB } = process.env;
-  if (!TWILIO_AUTH_TOKEN) {
-    console.error("whatsapp-webhook: TWILIO_AUTH_TOKEN no configurada");
+  const {
+    TWILIO_AUTH_TOKEN,
+    TWILIO_ACCOUNT_SID,
+    TWILIO_WHATSAPP_NUMBER,
+    ANTHROPIC_API_KEY,
+    NOTION_TOKEN,
+    NOTION_CLIENTES_DB,
+    NOTION_ACCIONES_DB,
+  } = process.env;
+
+  if (!TWILIO_AUTH_TOKEN || !TWILIO_ACCOUNT_SID || !TWILIO_WHATSAPP_NUMBER) {
+    console.error("whatsapp-webhook: faltan variables TWILIO_*");
     res.status(500).end();
     return;
   }
@@ -60,9 +105,15 @@ export default async function handler(req, res) {
 
   const from = params.From; // "whatsapp:+56912345678"
   const body = params.Body;
+
+  // Responder de inmediato para no dejar a Twilio esperando una respuesta síncrona
+  // que puede tardar más de lo que Twilio está dispuesto a esperar. El proceso sigue
+  // corriendo después de esto — Vercel no corta la función hasta que termine.
+  res.setHeader("Content-Type", "text/xml");
+  res.status(200).send(EMPTY_TWIML);
+
   if (!from || !body) {
-    res.setHeader("Content-Type", "text/xml");
-    res.status(200).send(twiml("No recibí ningún mensaje de texto. ¿Puedes reenviarlo?"));
+    console.error("whatsapp-webhook: falta From o Body", params);
     return;
   }
 
@@ -74,11 +125,15 @@ export default async function handler(req, res) {
       mensaje: body,
       env: { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB },
     });
-    res.setHeader("Content-Type", "text/xml");
-    res.status(200).send(twiml(result.reply));
+    for (const chunk of splitForWhatsApp(result.reply)) {
+      await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, chunk);
+    }
   } catch (err) {
     console.error("whatsapp-webhook error:", err);
-    res.setHeader("Content-Type", "text/xml");
-    res.status(200).send(twiml("Tuve un problema técnico procesando tu mensaje. Intenta de nuevo en unos minutos."));
+    try {
+      await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, FALLBACK_MESSAGE);
+    } catch (sendErr) {
+      console.error("whatsapp-webhook: fallo enviando mensaje de fallback:", sendErr);
+    }
   }
 }
