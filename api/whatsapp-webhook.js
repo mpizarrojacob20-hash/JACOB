@@ -3,6 +3,7 @@
 // tardar 15-20s, más de lo que Twilio espera por una respuesta síncrona), y una vez
 // lista la respuesta la envía por separado vía la API de mensajes de Twilio.
 import crypto from "node:crypto";
+import { waitUntil } from "@vercel/functions";
 import { processMessage } from "../lib/jacob-core.js";
 
 const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
@@ -107,8 +108,10 @@ export default async function handler(req, res) {
   const body = params.Body;
 
   // Responder de inmediato para no dejar a Twilio esperando una respuesta síncrona
-  // que puede tardar más de lo que Twilio está dispuesto a esperar. El proceso sigue
-  // corriendo después de esto — Vercel no corta la función hasta que termine.
+  // que puede tardar más de lo que Twilio está dispuesto a esperar. `waitUntil` le
+  // dice explícitamente a Vercel que mantenga la función viva hasta que el trabajo de
+  // abajo termine — sin esto, Vercel corta la ejecución apenas se manda la respuesta
+  // (a diferencia de un servidor propio de toda la vida, donde el proceso sigue solo).
   res.setHeader("Content-Type", "text/xml");
   res.status(200).send(EMPTY_TWIML);
 
@@ -119,21 +122,25 @@ export default async function handler(req, res) {
 
   const telefono = from.replace(/^whatsapp:/, "");
 
-  try {
-    const result = await processMessage({
-      telefono,
-      mensaje: body,
-      env: { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB },
-    });
-    for (const chunk of splitForWhatsApp(result.reply)) {
-      await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, chunk);
-    }
-  } catch (err) {
-    console.error("whatsapp-webhook error:", err);
-    try {
-      await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, FALLBACK_MESSAGE);
-    } catch (sendErr) {
-      console.error("whatsapp-webhook: fallo enviando mensaje de fallback:", sendErr);
-    }
-  }
+  waitUntil(
+    (async () => {
+      try {
+        const result = await processMessage({
+          telefono,
+          mensaje: body,
+          env: { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB },
+        });
+        for (const chunk of splitForWhatsApp(result.reply)) {
+          await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, chunk);
+        }
+      } catch (err) {
+        console.error("whatsapp-webhook error:", err);
+        try {
+          await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, FALLBACK_MESSAGE);
+        } catch (sendErr) {
+          console.error("whatsapp-webhook: fallo enviando mensaje de fallback:", sendErr);
+        }
+      }
+    })()
+  );
 }
