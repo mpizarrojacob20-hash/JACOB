@@ -5,6 +5,7 @@
 import crypto from "node:crypto";
 import { waitUntil } from "@vercel/functions";
 import { processMessage } from "../lib/jacob-core.js";
+import { sendWhatsAppMessageChunked, sendWhatsAppMessage } from "../lib/twilio.js";
 
 const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
 const FALLBACK_MESSAGE = "Tuve un problema técnico procesando tu mensaje. Intenta de nuevo en unos minutos.";
@@ -24,51 +25,6 @@ function isValidTwilioSignature(authToken, url, params, signature) {
   const receivedBuf = Buffer.from(signature);
   if (expectedBuf.length !== receivedBuf.length) return false;
   return crypto.timingSafeEqual(expectedBuf, receivedBuf);
-}
-
-// WhatsApp/Twilio rechaza mensajes de más de 1600 caracteres (error 21617). Las
-// respuestas completas de Jacob (diagnóstico ESTADO 2 con las 4 secciones) suelen
-// superarlo, así que se parten en varios mensajes respetando párrafos.
-function splitForWhatsApp(text, maxLen = 1500) {
-  if (text.length <= maxLen) return [text];
-  const paragraphs = text.split(/\n\n+/);
-  const chunks = [];
-  let current = "";
-  for (const para of paragraphs) {
-    const candidate = current ? `${current}\n\n${para}` : para;
-    if (candidate.length > maxLen) {
-      if (current) chunks.push(current);
-      if (para.length > maxLen) {
-        for (let i = 0; i < para.length; i += maxLen) {
-          chunks.push(para.slice(i, i + maxLen));
-        }
-        current = "";
-      } else {
-        current = para;
-      }
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) chunks.push(current);
-  return chunks;
-}
-
-async function sendWhatsAppMessage(accountSid, authToken, to, from, body) {
-  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-  const params = new URLSearchParams({ To: to, From: from, Body: body });
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Twilio send ${response.status}: ${errText}`);
-  }
 }
 
 export default async function handler(req, res) {
@@ -130,9 +86,7 @@ export default async function handler(req, res) {
           mensaje: body,
           env: { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB },
         });
-        for (const chunk of splitForWhatsApp(result.reply)) {
-          await sendWhatsAppMessage(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, chunk);
-        }
+        await sendWhatsAppMessageChunked(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, result.reply);
       } catch (err) {
         console.error("whatsapp-webhook error:", err);
         try {
