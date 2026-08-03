@@ -9,7 +9,7 @@ import { sendWhatsAppMessageChunked, sendWhatsAppTemplate } from "../lib/twilio.
 // única forma de escribirle primero a alguien que nunca ha hablado con Jacob — WhatsApp
 // bloquea texto libre fuera de la ventana de 24h, y alguien nunca contactado nunca tuvo
 // esa ventana abierta.
-const WELCOME_TEMPLATE_SID = "HX028881b23fdfc0712891eb3108f7715c";
+const WELCOME_TEMPLATE_SID = "HX79f89c7faeca696ff7e946805aa1bf4a";
 
 export default async function handler(req, res) {
   const { CRON_SECRET, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER } = process.env;
