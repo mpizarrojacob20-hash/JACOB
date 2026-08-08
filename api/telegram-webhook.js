@@ -11,9 +11,18 @@ import {
   findClientByTelegramId,
   linkTelegramChatId,
 } from "../lib/jacob-core.js";
-import { sendTelegramMessage } from "../lib/telegram.js";
+import { sendTelegramMessage, EXAMPLES_KEYBOARD } from "../lib/telegram.js";
 
 const PHONE_RE = /^\+?[\d\s-]{8,}$/;
+
+const WELCOME_TEXT = `Hola 👋 Soy Jacob — tu contador, CFO, auditor interno y administrador, todo en este chat.
+
+📋 *Contador* — interpreto tus estados financieros y tus gastos
+📊 *CFO* — comparo tus márgenes contra tu industria y te ayudo a decidir dónde poner la plata
+🔎 *Auditor interno* — detecto focos rojos antes de que te cuesten caro
+🧭 *Administrador* — ordeno quién decide qué, para que no dependa todo de ti
+
+Para conectarte, mándame tu número de teléfono registrado (el mismo que usas normalmente con Jacob).`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -52,6 +61,14 @@ export default async function handler(req, res) {
         const linkedClient = await findClientByTelegramId(NOTION_TOKEN, NOTION_CLIENTES_DB, chatId);
 
         if (!linkedClient) {
+          if (text === "/ejemplos") {
+            await sendTelegramMessage(
+              TELEGRAM_BOT_TOKEN,
+              chatId,
+              "Todavía no estás conectado — mándame primero tu número de teléfono registrado."
+            );
+            return;
+          }
           if (PHONE_RE.test(text)) {
             const candidate = await findClientByPhone(NOTION_TOKEN, NOTION_CLIENTES_DB, text);
             if (candidate) {
@@ -59,7 +76,8 @@ export default async function handler(req, res) {
               await sendTelegramMessage(
                 TELEGRAM_BOT_TOKEN,
                 chatId,
-                "Listo, quedaste conectado ✅ Cuéntame en qué te ayudo, o mándame tus números para partir."
+                "Listo, quedaste conectado ✅ Cuéntame en qué te ayudo, mándame tus números para partir, o toca uno de estos:",
+                { replyMarkup: EXAMPLES_KEYBOARD }
               );
             } else {
               await sendTelegramMessage(
@@ -70,10 +88,16 @@ export default async function handler(req, res) {
             }
             return;
           }
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, WELCOME_TEXT, { markdown: true });
+          return;
+        }
+
+        if (text === "/ejemplos") {
           await sendTelegramMessage(
             TELEGRAM_BOT_TOKEN,
             chatId,
-            "Hola 👋 Soy Jacob. Para conectarte, mándame tu número de teléfono registrado (el mismo que usas para hablar con Jacob normalmente)."
+            "Toca uno para partir, o escríbeme directo lo que necesites:",
+            { replyMarkup: EXAMPLES_KEYBOARD }
           );
           return;
         }
