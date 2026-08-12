@@ -41,6 +41,9 @@ export default async function handler(req, res) {
     NOTION_TOKEN,
     NOTION_CLIENTES_DB,
     NOTION_ACCIONES_DB,
+    NOTION_DTE_DB,
+    NOTION_CONCILIACION_DB,
+    NOTION_VENCIMIENTOS_DB,
   } = process.env;
 
   if (!TWILIO_AUTH_TOKEN || !TWILIO_ACCOUNT_SID || !TWILIO_WHATSAPP_NUMBER) {
@@ -84,7 +87,15 @@ export default async function handler(req, res) {
         const result = await processMessage({
           telefono,
           mensaje: body,
-          env: { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB },
+          env: {
+            ANTHROPIC_API_KEY,
+            NOTION_TOKEN,
+            NOTION_CLIENTES_DB,
+            NOTION_ACCIONES_DB,
+            NOTION_DTE_DB,
+            NOTION_CONCILIACION_DB,
+            NOTION_VENCIMIENTOS_DB,
+          },
         });
         await sendWhatsAppMessageChunked(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, from, TWILIO_WHATSAPP_NUMBER, result.reply);
       } catch (err) {
