@@ -37,6 +37,9 @@ export default async function handler(req, res) {
     NOTION_TOKEN,
     NOTION_CLIENTES_DB,
     NOTION_ACCIONES_DB,
+    NOTION_DTE_DB,
+    NOTION_CONCILIACION_DB,
+    NOTION_VENCIMIENTOS_DB,
   } = process.env;
 
   if (TELEGRAM_WEBHOOK_SECRET && req.headers["x-telegram-bot-api-secret-token"] !== TELEGRAM_WEBHOOK_SECRET) {
@@ -53,7 +56,15 @@ export default async function handler(req, res) {
   const text = message?.text?.trim();
   if (!chatId || !text) return;
 
-  const env = { ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_CLIENTES_DB, NOTION_ACCIONES_DB };
+  const env = {
+    ANTHROPIC_API_KEY,
+    NOTION_TOKEN,
+    NOTION_CLIENTES_DB,
+    NOTION_ACCIONES_DB,
+    NOTION_DTE_DB,
+    NOTION_CONCILIACION_DB,
+    NOTION_VENCIMIENTOS_DB,
+  };
 
   waitUntil(
     (async () => {
